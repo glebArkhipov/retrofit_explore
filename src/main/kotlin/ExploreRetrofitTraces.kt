@@ -3,6 +3,7 @@ package com
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import okhttp3.OkHttpClient
+import retrofit2.Invocation
 import retrofit2.Retrofit
 import retrofit2.converter.jackson.JacksonConverterFactory
 import retrofit2.create
@@ -20,7 +21,18 @@ private fun createCatApi(): CatApi {
         .addInterceptor { chain ->
             val response = chain.proceed(chain.request())
             if (!response.isSuccessful) {
-                throw SubTypeOfIOException(response)
+                val tag = chain.request().tag(Invocation::class.java)
+
+                val message = if (tag != null) {
+                    val clazz = tag.method().declaringClass.`package`?.name + tag.method().declaringClass.name
+                    val method = tag.method().name
+                    val responseCode = response.code
+                    "Unsuccessful HTTP Call [$responseCode]: $clazz.$method"
+                } else {
+                    "Tag is missing. So no additional log"
+                }
+                println(message)
+                throw SubTypeOfIOException(response, message)
             }
             response
         }
@@ -38,4 +50,4 @@ interface CatApi {
     suspend fun callThatReturns404(): Collection<Any>
 }
 
-class SubTypeOfIOException(response: okhttp3.Response) : IOException(response.code.toString())
+class SubTypeOfIOException(response: okhttp3.Response, message: String) : IOException(message)
