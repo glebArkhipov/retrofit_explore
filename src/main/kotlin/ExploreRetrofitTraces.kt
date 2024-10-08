@@ -1,7 +1,11 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import kotlinx.coroutines.CopyableThrowable
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.OkHttpClient
 import retrofit2.Invocation
 import retrofit2.Retrofit
@@ -50,4 +54,14 @@ interface CatApi {
     suspend fun callThatReturns404(): Collection<Any>
 }
 
-class SubTypeOfIOException(response: okhttp3.Response, message: String) : IOException(message)
+class SubTypeOfIOException(
+    private val response: okhttp3.Response,
+    private val message1: String,
+) : IOException(message1),
+    CopyableThrowable<SubTypeOfIOException> {
+    override fun createCopy(): SubTypeOfIOException {
+        val result = SubTypeOfIOException(response, message1)
+        result.initCause(this)
+        return result
+    }
+}
